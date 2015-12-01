@@ -825,7 +825,7 @@ ngx_rtmp_set_chunk_size(ngx_rtmp_session_t *s, ngx_uint_t size)
 
     s->in_old_pool = s->in_pool;
     s->in_chunk_size = size;
-    s->in_pool = ngx_create_pool(4096, s->connection->log);
+    s->in_pool = ngx_create_pool(size, s->connection->log);
 
     /* copy existing chunk data */
     if (s->in_old_pool) {

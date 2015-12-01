@@ -417,7 +417,7 @@ ngx_rtmp_auto_push_reconnect(ngx_event_t *ev)
                    npushed, ccf->worker_processes,
                    ccf->worker_processes - 1 - npushed);
 
-    if (ccf->worker_processes <= npushed + 1) {
+    if (ccf->worker_processes == npushed + 1) {
         return;
     }
 

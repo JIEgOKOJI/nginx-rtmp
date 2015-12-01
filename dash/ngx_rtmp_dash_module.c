@@ -1198,9 +1198,7 @@ ngx_rtmp_dash_audio(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
 
     in->buf->pos += 2;
 
-    ngx_rtmp_dash_append(s, in, &ctx->audio, 0, h->timestamp, 0);
-
-    return NGX_OK;
+    return ngx_rtmp_dash_append(s, in, &ctx->audio, 0, h->timestamp, 0);
 }
 
 
@@ -1257,10 +1255,8 @@ ngx_rtmp_dash_video(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
 
     in->buf->pos += 5;
 
-    ngx_rtmp_dash_append(s, in, &ctx->video, ftype == 1, h->timestamp,
-                              delay);
-
-    return NGX_OK;
+    return ngx_rtmp_dash_append(s, in, &ctx->video, ftype == 1, h->timestamp,
+                                delay);
 }
 
 
