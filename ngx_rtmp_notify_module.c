@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Roman Arutyunyan
  */
@@ -537,6 +536,8 @@ ngx_rtmp_notify_publish_create(ngx_rtmp_session_t *s, void *arg,
 
     b = ngx_create_temp_buf(pool,
                             sizeof("&call=publish") +
+                            sizeof("&app=") + s->app.len * 3 +
+                            sizeof("&timestamp=") + NGX_INT64_LEN +
                             sizeof("&name=") + name_len * 3 +
                             sizeof("&type=") + type_len * 3 +
                             1 + args_len);
@@ -549,6 +550,12 @@ ngx_rtmp_notify_publish_create(ngx_rtmp_session_t *s, void *arg,
 
     b->last = ngx_cpymem(b->last, (u_char*) "&call=publish",
                          sizeof("&call=publish") - 1);
+    b->last = ngx_cpymem(b->last, (u_char*) "&app=", sizeof("&app=") - 1);
+    b->last = (u_char*) ngx_escape_uri(b->last, s->app.data, s->app.len,
+                                      NGX_ESCAPE_ARGS);
+    b->last = ngx_cpymem(b->last, (u_char *) "&timestamp=",
+                         sizeof("&timestamp=") - 1);
+    b->last = ngx_sprintf(b->last, "%L", (uint64_t)ngx_current_msec);
 
     b->last = ngx_cpymem(b->last, (u_char*) "&name=", sizeof("&name=") - 1);
     b->last = (u_char*) ngx_escape_uri(b->last, v->name, name_len,
@@ -587,6 +594,7 @@ ngx_rtmp_notify_play_create(ngx_rtmp_session_t *s, void *arg,
 
     b = ngx_create_temp_buf(pool,
                             sizeof("&call=play") +
+                            sizeof("&app=") + s->app.len * 3 +
                             sizeof("&name=") + name_len * 3 +
                             sizeof("&start=&duration=&reset=") +
                             NGX_INT32_LEN * 3 + 1 + args_len);
@@ -600,6 +608,9 @@ ngx_rtmp_notify_play_create(ngx_rtmp_session_t *s, void *arg,
     b->last = ngx_cpymem(b->last, (u_char*) "&call=play",
                          sizeof("&call=play") - 1);
 
+    b->last = ngx_cpymem(b->last, (u_char*) "&app=", sizeof("&app=") - 1);
+    b->last = (u_char*) ngx_escape_uri(b->last, s->app.data, s->app.len,
+                                        NGX_ESCAPE_ARGS);
     b->last = ngx_cpymem(b->last, (u_char*) "&name=", sizeof("&name=") - 1);
     b->last = (u_char*) ngx_escape_uri(b->last, v->name, name_len,
                                        NGX_ESCAPE_ARGS);
@@ -642,6 +653,8 @@ ngx_rtmp_notify_done_create(ngx_rtmp_session_t *s, void *arg,
 
     b = ngx_create_temp_buf(pool,
                             sizeof("&call=") + cbname_len +
+                            sizeof("&app=") + s->app.len * 3 +
+                            sizeof("&timestamp=") + NGX_INT64_LEN +
                             sizeof("&name=") + name_len * 3 +
                             1 + args_len);
     if (b == NULL) {
@@ -653,6 +666,14 @@ ngx_rtmp_notify_done_create(ngx_rtmp_session_t *s, void *arg,
 
     b->last = ngx_cpymem(b->last, (u_char*) "&call=", sizeof("&call=") - 1);
     b->last = ngx_cpymem(b->last, ds->cbname, cbname_len);
+
+    b->last = ngx_cpymem(b->last, (u_char*) "&app=", sizeof("&app=") - 1);
+    b->last = (u_char*) ngx_escape_uri(b->last, s->app.data, s->app.len,
+                                       NGX_ESCAPE_ARGS);
+ 
+    b->last = ngx_cpymem(b->last, (u_char *) "&timestamp=",
+                         sizeof("&timestamp=") - 1);
+    b->last = ngx_sprintf(b->last, "%L", (uint64_t)ngx_current_msec);
 
     if (name_len) {
         b->last = ngx_cpymem(b->last, (u_char*) "&name=", sizeof("&name=") - 1);
@@ -701,6 +722,7 @@ ngx_rtmp_notify_update_create(ngx_rtmp_session_t *s, void *arg,
                             sizeof("&call=update") + sfx.len +
                             sizeof("&time=") + NGX_TIME_T_LEN +
                             sizeof("&timestamp=") + NGX_INT32_LEN +
+                            sizeof("&app=") + s->app.len * 3 +
                             sizeof("&name=") + name_len * 3 +
                             1 + args_len);
     if (b == NULL) {
@@ -721,6 +743,11 @@ ngx_rtmp_notify_update_create(ngx_rtmp_session_t *s, void *arg,
     b->last = ngx_cpymem(b->last, (u_char *) "&timestamp=",
                          sizeof("&timestamp=") - 1);
     b->last = ngx_sprintf(b->last, "%D", s->current_time);
+    
+   b->last = ngx_cpymem(b->last, (u_char*) "&app=", sizeof("&app=") - 1);
+   b->last = (u_char*) ngx_escape_uri(b->last, s->app.data, s->app.len,
+                                       NGX_ESCAPE_ARGS);
+
 
     if (name_len) {
         b->last = ngx_cpymem(b->last, (u_char*) "&name=", sizeof("&name=") - 1);
@@ -760,6 +787,7 @@ ngx_rtmp_notify_record_done_create(ngx_rtmp_session_t *s, void *arg,
 
     b = ngx_create_temp_buf(pool,
                             sizeof("&call=record_done") +
+                            sizeof("&app=") + s->app.len * 3 +
                             sizeof("&recorder=") + v->recorder.len +
                             sizeof("&name=") + name_len * 3 +
                             sizeof("&path=") + v->path.len * 3 +
@@ -773,7 +801,11 @@ ngx_rtmp_notify_record_done_create(ngx_rtmp_session_t *s, void *arg,
 
     b->last = ngx_cpymem(b->last, (u_char*) "&call=record_done",
                          sizeof("&call=record_done") - 1);
-
+                                          
+     b->last = ngx_cpymem(b->last, (u_char*) "&app=", sizeof("&app=") - 1);
+     b->last = (u_char*) ngx_escape_uri(b->last, s->app.data, s->app.len,
+                               NGX_ESCAPE_ARGS);
+                               
     b->last = ngx_cpymem(b->last, (u_char *) "&recorder=",
                          sizeof("&recorder=") - 1);
     b->last = (u_char*) ngx_escape_uri(b->last, v->recorder.data,

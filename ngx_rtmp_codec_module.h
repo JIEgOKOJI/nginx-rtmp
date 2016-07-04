@@ -55,9 +55,9 @@ typedef struct {
     ngx_uint_t                  height;
     ngx_uint_t                  duration;
     ngx_uint_t                  frame_rate;
-    ngx_uint_t                  video_data_rate;
+    double                      video_data_rate;
     ngx_uint_t                  video_codec_id;
-    ngx_uint_t                  audio_data_rate;
+    double                      audio_data_rate;
     ngx_uint_t                  audio_codec_id;
     ngx_uint_t                  aac_profile;
     ngx_uint_t                  aac_chan_conf;
@@ -76,7 +76,8 @@ typedef struct {
 
     ngx_chain_t                *avc_header;
     ngx_chain_t                *aac_header;
-    
+	
+    ngx_chain_t                *received_meta;
     ngx_chain_t                *meta;
     ngx_uint_t                  meta_version;
 } ngx_rtmp_codec_ctx_t;

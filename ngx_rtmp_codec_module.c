@@ -368,6 +368,10 @@ ngx_rtmp_codec_disconnect(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
         ngx_rtmp_free_shared_chain(cscf, ctx->meta);
         ctx->meta = NULL;
     }
+	if (ctx->received_meta) {
+        ngx_rtmp_free_shared_chain(cscf, ctx->received_meta);
+        ctx->received_meta = NULL;
+    }
 
     return NGX_OK;
 }
@@ -543,7 +547,8 @@ ngx_rtmp_codec_parse_avc_header(ngx_rtmp_session_t *s, ngx_chain_t *in)
 {
     ngx_uint_t              profile_idc, width, height, crop_left, crop_right,
                             crop_top, crop_bottom, frame_mbs_only, n, cf_idc,
-                            num_ref_frames;
+                            num_ref_frames, sl_size, sl_index, sl_udelta;
+    ngx_int_t               sl_last, sl_next, sl_delta;
     ngx_rtmp_codec_ctx_t   *ctx;
     ngx_rtmp_bit_reader_t   br;
 
@@ -621,14 +626,36 @@ ngx_rtmp_codec_parse_avc_header(ngx_rtmp_session_t *s, ngx_chain_t *in)
                 /* seq scaling list present */
                 if (ngx_rtmp_bit_read(&br, 1)) {
 
-                    /* TODO: scaling_list()
+                    /* scaling list */
                     if (n < 6) {
+                       sl_size = 16;
                     } else {
+                        sl_size = 64;
                     }
-                    */
+                     sl_last = 8;
+                     sl_next = 8;
+
+                    for (sl_index = 0; sl_index < sl_size; sl_index++) {
+
+                       if (sl_next != 0) {
+
+                            /* convert to signed: (-1)**k+1 * ceil(k/2) */
+                            sl_udelta = ngx_rtmp_bit_read_golomb(&br);
+                           sl_delta = (sl_udelta + 1) >> 1;
+                            if ((sl_udelta & 1) == 0) {
+                                sl_delta = -sl_delta;
+                            }
+
+                            sl_next = (sl_last + sl_delta + 256) % 256;
+
+                            if (sl_next != 0) {
+                               sl_last = sl_next;
+                            }
+                      }
                 }
             }
         }
+    }
     }
 
     /* log2 max frame num */
@@ -916,7 +943,10 @@ ngx_rtmp_codec_meta_data(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
 {
     ngx_rtmp_codec_app_conf_t      *cacf;
     ngx_rtmp_codec_ctx_t           *ctx;
+    ngx_rtmp_core_srv_conf_t       *cscf;
     ngx_uint_t                      skip;
+	
+	cscf = ngx_rtmp_get_module_srv_conf(s, ngx_rtmp_core_module);
 
     static struct {
         double                      width;
@@ -1042,9 +1072,9 @@ ngx_rtmp_codec_meta_data(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     ctx->height = (ngx_uint_t) v.height;
     ctx->duration = (ngx_uint_t) v.duration;
     ctx->frame_rate = (ngx_uint_t) v.frame_rate;
-    ctx->video_data_rate = (ngx_uint_t) v.video_data_rate;
+    ctx->video_data_rate = v.video_data_rate;
     ctx->video_codec_id = (ngx_uint_t) v.video_codec_id_n;
-    ctx->audio_data_rate = (ngx_uint_t) v.audio_data_rate;
+    ctx->audio_data_rate = v.audio_data_rate;
     ctx->audio_codec_id = (v.audio_codec_id_n == -1
             ? 0 : v.audio_codec_id_n == 0
             ? NGX_RTMP_AUDIO_UNCOMPRESSED : (ngx_uint_t) v.audio_codec_id_n);
@@ -1060,6 +1090,11 @@ ngx_rtmp_codec_meta_data(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
             ctx->video_codec_id,
             ngx_rtmp_get_audio_codec_name(ctx->audio_codec_id),
             ctx->audio_codec_id);
+			
+      if (ctx->received_meta) {
+           ngx_rtmp_free_shared_chain(cscf, ctx->received_meta);
+         }
+            ctx->received_meta = ngx_rtmp_append_shared_bufs(cscf, NULL, in);
 
     switch (cacf->meta) {
         case NGX_RTMP_CODEC_META_ON:
